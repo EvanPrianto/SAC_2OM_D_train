@@ -125,11 +125,10 @@ class SAC():
 
     def _load_model(self):
         self.actor.load_weights('./save/actor')
-        self.actor_target.load_weights('./save/actor_target')
-        self.critic.load_weights('./save/critic')
-        self.critic_target.load_weights('./save/critic_target')
-        self.critic_2.load_weights('./save/critic_2')
-        self.critic_2_target.load_weights('./save/critic_2_target')
+        self.qf1.load_weights('./save/qf1')
+        self.qf2.load_weights('./save/qf2')
+        self.vf.load_weights('./save/vf')
+        self.vf_target.load_weights('./save/vf_target')
 
     def get_action(self, state, test=False):
         assert isinstance(state, np.ndarray)
@@ -376,9 +375,9 @@ def get_default_rb_dict(size, env):
         "size": size,
         "default_dtype": np.float32,
         "env_dict": {
-            "obs": {
+            "obs": {                    #observation
                 "shape": hp.state_dim},
-            "next_obs": {
+            "next_obs": {               #observation
                 "shape": hp.state_dim},
             "act": {
                 "shape": hp.action_dim},
@@ -422,12 +421,12 @@ class Trainer:
 
         random_action_prob = hp.random_action_prob
         action_noise_std = hp.action_noise_std
-        divide_idx = int(hp.state_dim / 2)
+        divide_idx = int((hp.state_dim-1) / 2)
 
         replay_buffer = get_replay_buffer(
             self._policy, self._env)
 
-        obs = self._env.reset()
+        obs = self._env.reset()#observation
 
         local_memory = []
 
@@ -476,23 +475,23 @@ class Trainer:
                     state = state.copy()
                     next_state = next_state.copy()
 
-                    for k in range(hp.her_k):  # her_k = 4,  divide_idx = 6/2 = 3
+                    for k in range(hp.her_k):  # her_k = 4,  divide_idx = (12-1)/2 = 6D
 
                         # export random state
                         future_idx = np.random.randint(low=h, high=self._env.time_step)
                         _, _, _, future_next_state, _ = copy.deepcopy(local_memory[future_idx])
 
                         # change the goal as exported state
-                        state[divide_idx:] = future_next_state[:divide_idx]
+                        state[divide_idx:(hp.state_dim-1)] = future_next_state[:divide_idx]
 
                         # if agent did not moved
                         if (np.linalg.norm(state[:divide_idx] - next_state[:divide_idx]) == 0) & (
                                 np.linalg.norm(action) > 0):
                             continue
 
-                        next_state[divide_idx:] = future_next_state[:divide_idx]
+                        next_state[divide_idx:(hp.state_dim-1)] = future_next_state[:divide_idx]
 
-                        if np.linalg.norm(next_state[:divide_idx] - next_state[divide_idx:]) <= self._env.goal_bound:
+                        if np.linalg.norm(next_state[:divide_idx] - next_state[divide_idx:(hp.state_dim-1)]) <= self._env.goal_bound:
                             reward = 0.0
                             done = True
                         else:
@@ -550,3 +549,5 @@ if __name__ == '__main__':
     policy = SAC()
     trainer = Trainer(policy, env)
     trainer()
+    
+    #save_mat()

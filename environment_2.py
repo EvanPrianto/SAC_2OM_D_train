@@ -17,14 +17,21 @@ class Environment(object):
         self.joint_max = hp.joint_max
         self.joint_min = hp.joint_min
         self.joint_range = self.joint_max - self.joint_min
+        self.joint_wrist_max = hp.joint_wrist_max
+        self.joint_wrist_min = hp.joint_wrist_min
+        self.d_y_max = hp.d_y_max
+        self.d_y_min = hp.d_y_min
+        self.d_y_range = self.d_y_max - self.d_y_min
+        self.d_margin = hp.d_margin
 
         self.obstacle = self.build_obstacle()
+        self.d_obstacle = self.build_d_obstacle()
 
-        self.env_noise = hp.env_noise
+        self.env_noise = hp.env_noise 
 
         self.c_check_acc = hp.c_check_acc
 
-        self.dim = int(hp.state_dim / 2) #dimension of configuration space = 6D
+        self.dim = int((hp.state_dim-1) / 2) #dimension of configuration space = 6D, #number of features = 1
 
         # self.reset()과 self.step()에서 계산할 변수
         # location = 현재 위치
@@ -32,6 +39,8 @@ class Environment(object):
         # state = 상태
         # reward = 보상
         # done = 에피소드 종료 여부
+        self.d_y = None
+        self.delta_d_y = None
         self.location = None
         self.goal = None
 
@@ -53,21 +62,24 @@ class Environment(object):
         self.time_step = 0
         self.success = False
         self.length = 0
+        self.d_y = (self.d_y_range - 2.0 * self.d_margin) * np.random.rand(1) + self.d_y_min + self.d_margin
+        self.delta_d_y = np.sign(np.random.randn()) * np.pi
+        self.d_obstacle[1]['c'][1] = self.d_y    #Yposition of dynamic obstacle
 
         # 현재 위치를 무작위로 생성
         # 1.한계 범위를 벗어나지 않고, 2.충돌이 일어나지 않는 위치를 뽑을때까지 반복
         self.location = (self.joint_range - 2.0 * self.margin) * np.random.rand(self.dim) + self.joint_min + self.margin
         while self.collision_init_check(self.location):#sample free
-            self.location = (self.joint_range - 2.0 * self.margin) * np.random.rand(self.dim) + self.joint_min + self.margin
+            self.location = (self.joint_range - 2.0 * self.margin) * np.random.rand(self.dim) + self.joint_min + self.margin#sample start point
 
         # 목표 위치를 무작위로 생성
         # 1.한계 범위를 벗어나지 않고, 2.충돌이 일어나지 않으며, 3.현재 위치와 너무 근접하지 않은 위치를 뽑을때까지 반복
         self.goal = (self.joint_range - 2.0 * self.margin) * np.random.rand(self.dim) + self.joint_min + self.margin
         while self.collision_init_check(self.goal) | self.goal_check(self.location):#sample free
-            self.goal = (self.joint_range - 2.0 * self.margin) * np.random.rand(self.dim) + self.joint_min + self.margin
+            self.goal = (self.joint_range - 2.0 * self.margin) * np.random.rand(self.dim) + self.joint_min + self.margin#sample goal point
 
         # 상태 정의 == 현재 위치 및 목표 위치
-        self.state = np.concatenate((self.location, self.goal), axis=0)
+        self.state = np.concatenate((self.location, self.goal, self.d_y), axis=0)
 
         return self.state.copy()
 
@@ -83,6 +95,9 @@ class Environment(object):
 
         # 현재 위치에 대해 취해진 행동으로 다음 위치 계산
         next_location = self.location + self.step_size * action + self.env_noise * np.random.randn(self.dim)
+        
+        next_d_y, next_delta_d_y = self.update_dynamic(self.d_y,self.delta_d_y)#dynamic obstacle movement
+        self.d_obstacle[1]['c'][1] = next_d_y
 
         # 다음 위치에 따른 상태, 보상, 목표 달성 여부 등을 계산
         # (1) 먼저 현재 위치와 다음 위치를 연결하는 직선 경로가 충돌이 발생하는지, 한계 범위를 넘어서는지를 체크
@@ -96,6 +111,8 @@ class Environment(object):
             self.done = False
         else:
             self.location = next_location
+            self.d_y = next_d_y
+            self.delta_d_y = next_delta_d_y
             if self.goal_check(self.location):#check the state is near goal state(define success)
                 self.reward = 0.0
                 self.done = True
@@ -105,7 +122,7 @@ class Environment(object):
                 self.done = False
 
         # 상태 업데이트
-        self.state = np.concatenate((self.location, self.goal), axis=0)
+        self.state = np.concatenate((self.location, self.goal, self.d_y), axis=0)
 
         return self.state.copy(), self.reward, self.done, 0
 
@@ -130,9 +147,34 @@ class Environment(object):
             {'c': np.array([250., 180., 500.]).reshape(3, 1), 'e': 0.5 * np.array([50., 50., 1000.]).reshape(3, 1),
              'u': self.ZYZ_Rmaxtrix(0., 0., 0.)})
 
+        obstacle.append(
+            {'c': np.array([150., 180., 300.]).reshape(3, 1), 'e': 0.5 * np.array([150., 1000., 50.]).reshape(3, 1),
+             'u': self.ZYZ_Rmaxtrix(0., 0., 0.)})
+
 #        obstacle.append(
-#            {'c': np.array([-150., 200., 50.]).reshape(3, 1), 'e': 0.5 * np.array([100., 250., 100.]).reshape(3, 1),
+#            {'c': np.array([200., -200., 112.5]).reshape(3, 1), 'e': 0.5 * np.array([200., 100., 225.]).reshape(3, 1),
 #             'u': self.ZYZ_Rmaxtrix(0., 0., 0.)})
+
+#        obstacle.append(
+#            {'c': np.array([-50., 300., 425.]).reshape(3, 1), 'e': 0.5 * np.array([500., 500., 50.]).reshape(3, 1),
+#             'u': self.ZYZ_Rmaxtrix(0., 0., 0.)})
+
+        obstacle.append({'c': np.array([0., 0., -2.]).reshape(3, 1), 'e': np.array([800., 800., 1.]).reshape(3, 1),
+                         'u': self.ZYZ_Rmaxtrix(0., 0., 0.)})
+
+        return obstacle
+        
+    def build_d_obstacle(self):#dynamic
+
+        obstacle = []
+
+        obstacle.append(
+            {'c': np.array([250., 180., 500.]).reshape(3, 1), 'e': 0.5 * np.array([50., 50., 1000.]).reshape(3, 1),
+             'u': self.ZYZ_Rmaxtrix(0., 0., 0.)})
+
+        obstacle.append(
+            {'c': np.array([150., 180., 300.]).reshape(3, 1), 'e': 0.5 * np.array([150., 150., 50.]).reshape(3, 1),
+             'u': self.ZYZ_Rmaxtrix(0., 0., 0.)})
 
 #        obstacle.append(
 #            {'c': np.array([200., -200., 112.5]).reshape(3, 1), 'e': 0.5 * np.array([200., 100., 225.]).reshape(3, 1),
@@ -193,7 +235,33 @@ class Environment(object):
 
         return flag
 
+    def d_collision_init_check(self, check_point):
 
+        x = []
+
+        x.append(check_point + np.array([0.0, 0.0, 0.0, 0.0, 0.0, 0.0]))
+        x.append(check_point + np.array([self.margin, 0.0, 0.0, 0.0, 0.0, 0.0]))
+        x.append(check_point + np.array([-self.margin, 0.0, 0.0, 0.0, 0.0, 0.0]))
+        x.append(check_point + np.array([0.0, self.margin, 0.0, 0.0, 0.0, 0.0]))
+        x.append(check_point + np.array([0.0, -self.margin, 0.0, 0.0, 0.0, 0.0]))
+        x.append(check_point + np.array([0.0, 0.0, self.margin, 0.0, 0.0, 0.0]))
+        x.append(check_point + np.array([0.0, 0.0, -self.margin, 0.0, 0.0, 0.0]))
+        x.append(check_point + np.array([0.0, 0.0, 0.0, self.margin, 0.0, 0.0]))
+        x.append(check_point + np.array([0.0, 0.0, 0.0, -self.margin, 0.0, 0.0]))
+        x.append(check_point + np.array([0.0, 0.0, 0.0, 0.0, self.margin, 0.0]))
+        x.append(check_point + np.array([0.0, 0.0, 0.0, 0.0, -self.margin, 0.0]))
+        x.append(check_point + np.array([0.0, 0.0, 0.0, 0.0, 0.0, self.margin]))
+        x.append(check_point + np.array([0.0, 0.0, 0.0, 0.0, 0.0, -self.margin]))
+    
+
+        flag = False
+
+        for i in range(13):
+            if self.d_collision_check(x[i]):
+                flag = True
+                break
+
+        return flag
 
     # a지점과 b지점을 연결하는 직선 경로에 대해 충돌이 발생하는지를 체크하는 함수
     # 방법은 a지점과 b지점을 연결하는 직선 경로를 n등분하여 각각의 지점에 대해 충돌 여부를 검사
@@ -207,7 +275,7 @@ class Environment(object):
         check_points = np.matmul(p[:, None], point_a[None, :]) + np.matmul(1.0 - p[:, None], point_b[None, :])
 
         for i in range(check_points.shape[0]):
-            if self.collision_check(check_points[i]):
+            if self.d_collision_check(check_points[i]):
                 flag = True
                 break
 
@@ -244,6 +312,52 @@ class Environment(object):
             flag = True
 
         return flag
+        
+    # 한 지점에 대해 충돌이 발생하는지를 체크하는 함수 Collision free node
+    def d_collision_check(self, check_point):
+
+        flag = False
+        
+        check_point1 = np.zeros([3])#joint robot1
+        check_point2 = np.array([0.0, 0.0, 0.0])#joint robot2
+        check_point1[0] = check_point[0]
+        check_point1[1] = check_point[1]
+        check_point1[2] = check_point[2]
+        check_point2[0] = check_point[3]
+        check_point2[1] = check_point[4]
+        check_point2[2] = check_point[5]
+        
+        kine1 = self.kine_rmx52_1(check_point1)
+        kine2 = self.kine_rmx52_2(check_point2)
+
+        _, obb1, check_matrix1 = self.obb_rmx52_1(kine1)
+        _, obb2, check_matrix2 = self.obb_rmx52_2(kine2)
+
+        self_collision1, _, _ = self.self_collision_check(obb1, check_matrix1)
+        self_collision2, _, _ = self.self_collision_check(obb2, check_matrix2)
+
+        env_collision1, _, _ = self.env_collision_check(self.d_obstacle, obb1)
+        env_collision2, _, _ = self.env_collision_check(self.d_obstacle, obb2)
+        env_collision3, _, _ = self.env_collision_check(obb2, obb1)
+
+        if self_collision1 | self_collision2 | env_collision1 | env_collision2 | env_collision3:
+            flag = True
+
+        return flag
+
+    def update_dynamic(self, d_y, delta_d_y):
+        
+        next_delta_d_y = delta_d_y  #update new direction
+        next_d_y = d_y+delta_d_y    #update new location
+        
+        if self.d_y_max < next_d_y: #check new location in range and check direction change
+            next_delta_d_y = -next_delta_d_y #if out of range update direction and position
+            next_d_y = self.d_y_max - next_d_y + self.d_y_max
+        elif next_d_y < self.d_y_min:   #check new location in rangeand check direction change
+            next_delta_d_y = -next_delta_d_y    #if out of range update direction and position
+            next_d_y = self.d_y_min - next_d_y + self.d_y_min            
+       
+        return next_d_y, next_delta_d_y
 
     # 1. forward kinematics를 통해 로봇의 각 obb의 world 좌표계 기준 값을 구함
     def kine_rmx52_1(self, point):
@@ -266,8 +380,14 @@ class Environment(object):
         q[0] = point[0]
         q[1] = point[1]
         q[2] = point[2]
-        q[3] = 0.0
-
+        q[3] = -point[2]-point[1]
+        
+        if self.joint_wrist_max < q[3]:#upper limit
+            q[3] = self.joint_wrist_max
+        
+        if q[3] < self.joint_wrist_min:#lower limit
+            q[3] = self.joint_wrist_min
+        
         offset[0] = np.array([[1., 0., 0., 0.], [0., 1., 0., 0.], [0., 0., 1., 36.], [0., 0., 0., 1.]])
         offset[1] = np.array([[1., 0., 0., 0.], [0., 0., 1., 0.], [0., -1., 0., 40.5], [0., 0., 0., 1.]])
         offset[2] = np.array([[1., 0., 0., 128.], [0., 1., 0., 24.], [0., 0., 1., 0.], [0., 0., 0., 1.]])
@@ -304,7 +424,13 @@ class Environment(object):
         q[0] = point[0]
         q[1] = point[1]
         q[2] = point[2]
-        q[3] = 0.0
+        q[3] = -point[2]-point[1]
+        
+        if self.joint_wrist_max < q[3]:#upper limit
+            q[3] = self.joint_wrist_max
+        
+        if q[3] < self.joint_wrist_min:#lower limit
+            q[3] = self.joint_wrist_min
 
         offset[0] = np.array([[1., 0., 0., 0.], [0., 1., 0., 350.], [0., 0., 1., 36.], [0., 0., 0., 1.]])
         offset[1] = np.array([[1., 0., 0., 0.], [0., 0., 1., 0.], [0., -1., 0., 40.5], [0., 0., 0., 1.]])
