@@ -529,7 +529,10 @@ class Trainer:
                     with self.train_summary_writer.as_default():
                         tf.summary.scalar('actor loss', actor_loss, step=n_training)
                         tf.summary.scalar('critic loss', critic_loss, step=n_training)
-
+                        
+                if n_episode % self._save_model_interval == 0 :
+                    self._policy._save_model()
+                
                 episode_steps = 0
                 episode_return = 0
                 episode_start_time = time.perf_counter()
@@ -537,8 +540,6 @@ class Trainer:
             if total_steps < self._policy.n_warmup:
                 continue
 
-            if n_episode % self._save_model_interval == 0 :
-                self._policy._save_model()
 
 
 
