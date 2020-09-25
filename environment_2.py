@@ -31,7 +31,7 @@ class Environment(object):
 
         self.c_check_acc = hp.c_check_acc
 
-        self.dim = int((hp.state_dim-2) / 2) #dimension of configuration space = 6D, #number of features = 2
+        self.dim = int((hp.state_dim-3) / 2) #dimension of configuration space = 6D, #number of features = 3
 
         # self.reset()과 self.step()에서 계산할 변수
         # location = 현재 위치
@@ -41,6 +41,7 @@ class Environment(object):
         # done = 에피소드 종료 여부
         self.d_y = None
         self.d_y_old = None
+        self.d_y_old_2 = None
         self.delta_d_y = None
         self.location = None
         self.goal = None
@@ -65,6 +66,7 @@ class Environment(object):
         self.length = 0
         self.d_y = (self.d_y_range - 2.0 * self.d_margin) * np.random.rand(1) + self.d_y_min + self.d_margin
         self.d_y_old = self.d_y
+        self.d_y_old_2 = self.d_y
         self.delta_d_y = np.sign(np.random.randn()) * np.pi
         self.d_obstacle[1]['c'][1] = self.d_y    #Yposition of dynamic obstacle
 
@@ -81,7 +83,7 @@ class Environment(object):
             self.goal = (self.joint_range - 2.0 * self.margin) * np.random.rand(self.dim) + self.joint_min + self.margin#sample goal point
 
         # 상태 정의 == 현재 위치 및 목표 위치
-        self.state = np.concatenate((self.location, self.goal, self.d_y_old, self.d_y), axis=0)
+        self.state = np.concatenate((self.location, self.goal, self.d_y_old_2, self.d_y_old, self.d_y), axis=0)
 
         return self.state.copy()
 
@@ -113,6 +115,7 @@ class Environment(object):
             self.done = False
         else:
             self.location = next_location
+            self.d_y_old_2 = self.d_y_old
             self.d_y_old = self.d_y
             self.d_y = next_d_y
             self.delta_d_y = next_delta_d_y
@@ -125,7 +128,7 @@ class Environment(object):
                 self.done = False
 
         # 상태 업데이트
-        self.state = np.concatenate((self.location, self.goal, self.d_y_old, self.d_y), axis=0)
+        self.state = np.concatenate((self.location, self.goal, self.d_y_old_2, self.d_y_old, self.d_y), axis=0)
 
         return self.state.copy(), self.reward, self.done, 0
 

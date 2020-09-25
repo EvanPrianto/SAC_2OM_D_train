@@ -284,11 +284,11 @@ class GaussianActor(tf.keras.Model):
         self._max_action = max_action
         self._state_independent_std = state_independent_std
 
-        self.l1 = Dense(1000, name="L1", activation=hidden_activation)
-        self.l2 = Dense(800, name="L2", activation=hidden_activation)
-        self.l3 = Dense(600, name="L3", activation=hidden_activation)
-        self.l4 = Dense(400, name="L4", activation=hidden_activation)
-        self.l5 = Dense(300, name="L5", activation=hidden_activation)
+        self.l1 = Dense(3200, name="L1", activation=hidden_activation)
+        self.l2 = Dense(2000, name="L2", activation=hidden_activation)
+        self.l3 = Dense(1600, name="L3", activation=hidden_activation)
+        self.l4 = Dense(1200, name="L4", activation=hidden_activation)
+        self.l5 = Dense(900, name="L5", activation=hidden_activation)
         self.out_mean = Dense(action_dim, name="L_mean", activation='tanh')
         activation = 'tanh' if tanh_std else None
         self.out_log_std = Dense(action_dim, name="L_sigma", activation=activation)
@@ -325,11 +325,11 @@ class CriticV(tf.keras.Model):
     def __init__(self, state_shape, name='vf'):
         super().__init__(name=name)
 
-        self.l1 = Dense(1000, name="L1", activation='relu')
-        self.l2 = Dense(800, name="L2", activation='relu')
-        self.l3 = Dense(600, name="L3", activation='relu')
-        self.l4 = Dense(400, name="L4", activation='relu')
-        self.l5 = Dense(300, name="L5", activation='relu')
+        self.l1 = Dense(3200, name="L1", activation='relu')
+        self.l2 = Dense(2000, name="L2", activation='relu')
+        self.l3 = Dense(1600, name="L3", activation='relu')
+        self.l4 = Dense(1200, name="L4", activation='relu')
+        self.l5 = Dense(900, name="L5", activation='relu')
         self.l6 = Dense(1, name="L6", activation='linear')
 
 
@@ -347,11 +347,11 @@ class CriticQ(tf.keras.Model):
     def __init__(self, state_shape, action_dim, name='qf'):
         super().__init__(name=name)
 
-        self.l1 = Dense(1000, name="L1", activation='relu')
-        self.l2 = Dense(800, name="L2", activation='relu')
-        self.l3 = Dense(600, name="L3", activation='relu')
-        self.l4 = Dense(400, name="L4", activation='relu')
-        self.l5 = Dense(300, name="L5", activation='relu')
+        self.l1 = Dense(3200, name="L1", activation='relu')
+        self.l2 = Dense(2000, name="L2", activation='relu')
+        self.l3 = Dense(1600, name="L3", activation='relu')
+        self.l4 = Dense(1200, name="L4", activation='relu')
+        self.l5 = Dense(900, name="L5", activation='relu')
         self.l6 = Dense(1, name="L6", activation='linear')
 
 
@@ -421,7 +421,7 @@ class Trainer:
 
         random_action_prob = hp.random_action_prob
         action_noise_std = hp.action_noise_std
-        divide_idx = int((hp.state_dim-2) / 2) #dimension of configuration space = 6D, #number of features = 2
+        divide_idx = int((hp.state_dim-3) / 2) #dimension of configuration space = 6D, #number of features = 3
 
         replay_buffer = get_replay_buffer(
             self._policy, self._env)
@@ -475,23 +475,23 @@ class Trainer:
                     state = state.copy()
                     next_state = next_state.copy()
 
-                    for k in range(hp.her_k):  # her_k = 4,  divide_idx = (12-1)/2 = 6D
+                    for k in range(hp.her_k):  # her_k = 4,  divide_idx = (12-3)/2 = 6D
 
                         # export random state
                         future_idx = np.random.randint(low=h, high=self._env.time_step)
                         _, _, _, future_next_state, _ = copy.deepcopy(local_memory[future_idx])
 
                         # change the goal as exported state
-                        state[divide_idx:(hp.state_dim-2)] = future_next_state[:divide_idx]
+                        state[divide_idx:(hp.state_dim-3)] = future_next_state[:divide_idx] # divide_idx = (12-3)/2 = 6D
 
                         # if agent did not moved
                         if (np.linalg.norm(state[:divide_idx] - next_state[:divide_idx]) == 0) & (
                                 np.linalg.norm(action) > 0):
                             continue
 
-                        next_state[divide_idx:(hp.state_dim-2)] = future_next_state[:divide_idx]
+                        next_state[divide_idx:(hp.state_dim-3)] = future_next_state[:divide_idx]
 
-                        if np.linalg.norm(next_state[:divide_idx] - next_state[divide_idx:(hp.state_dim-2)]) <= self._env.goal_bound:
+                        if np.linalg.norm(next_state[:divide_idx] - next_state[divide_idx:(hp.state_dim-3)]) <= self._env.goal_bound:
                             reward = 0.0
                             done = True
                         else:
