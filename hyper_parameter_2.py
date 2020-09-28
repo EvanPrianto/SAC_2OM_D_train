@@ -16,7 +16,7 @@ class hp(object):
     margin = goal_bound #makes max value lower and min value higher and also increase node check boundary
     env_noise = 0.002 #noise in step fuction
     c_check_acc = 0.2 #accuracy of path collision(step check)
-    state_dim = 15 #delta joint and goal(12 = 6D x 2) with features of obstacle location(number of features = 3)
+    state_dim = 19 #delta joint and goal(12 = 6D x 2) with features of obstacle location(number of features = 7)
     action_dim = 6
 
     # agent

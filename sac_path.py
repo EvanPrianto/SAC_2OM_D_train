@@ -421,7 +421,7 @@ class Trainer:
 
         random_action_prob = hp.random_action_prob
         action_noise_std = hp.action_noise_std
-        divide_idx = int((hp.state_dim-3) / 2) #dimension of configuration space = 6D, #number of features = 3
+        divide_idx = int((hp.state_dim-7) / 2) #dimension of configuration space = 6D, #number of features = 7
 
         replay_buffer = get_replay_buffer(
             self._policy, self._env)
@@ -475,23 +475,23 @@ class Trainer:
                     state = state.copy()
                     next_state = next_state.copy()
 
-                    for k in range(hp.her_k):  # her_k = 4,  divide_idx = (12-3)/2 = 6D
+                    for k in range(hp.her_k):  # her_k = 4,  divide_idx = (19-7)/2 = 6D
 
                         # export random state
                         future_idx = np.random.randint(low=h, high=self._env.time_step)
                         _, _, _, future_next_state, _ = copy.deepcopy(local_memory[future_idx])
 
                         # change the goal as exported state
-                        state[divide_idx:(hp.state_dim-3)] = future_next_state[:divide_idx] # divide_idx = (12-3)/2 = 6D
+                        state[divide_idx:(hp.state_dim-7)] = future_next_state[:divide_idx] # divide_idx = (19-7)/2 = 6D
 
                         # if agent did not moved
                         if (np.linalg.norm(state[:divide_idx] - next_state[:divide_idx]) == 0) & (
                                 np.linalg.norm(action) > 0):
                             continue
 
-                        next_state[divide_idx:(hp.state_dim-3)] = future_next_state[:divide_idx]
+                        next_state[divide_idx:(hp.state_dim-7)] = future_next_state[:divide_idx]
 
-                        if np.linalg.norm(next_state[:divide_idx] - next_state[divide_idx:(hp.state_dim-3)]) <= self._env.goal_bound:
+                        if np.linalg.norm(next_state[:divide_idx] - next_state[divide_idx:(hp.state_dim-7)]) <= self._env.goal_bound:
                             reward = 0.0
                             done = True
                         else:
