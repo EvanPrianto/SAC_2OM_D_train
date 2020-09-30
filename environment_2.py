@@ -90,8 +90,16 @@ class Environment(object):
         while self.collision_init_check(self.goal) | self.goal_check(self.location):#sample free
             self.goal = (self.joint_range - 2.0 * self.margin) * np.random.rand(self.dim) + self.joint_min + self.margin#sample goal point
 
+        d_y_old_6_final = self.scale_range_d_y(self.d_y_old_6)
+        d_y_old_5_final = self.scale_range_d_y(self.d_y_old_5)
+        d_y_old_4_final = self.scale_range_d_y(self.d_y_old_4)
+        d_y_old_3_final = self.scale_range_d_y(self.d_y_old_3)
+        d_y_old_2_final = self.scale_range_d_y(self.d_y_old_2)
+        d_y_old_final = self.scale_range_d_y(self.d_y_old)
+        d_y_final = self.scale_range_d_y(self.d_y)
+
         # 상태 정의 == 현재 위치 및 목표 위치
-        self.state = np.concatenate((self.location, self.goal, self.d_y_old_6, self.d_y_old_5, self.d_y_old_4, self.d_y_old_3, self.d_y_old_2, self.d_y_old, self.d_y), axis=0)
+        self.state = np.concatenate((self.location, self.goal, d_y_old_6_final, d_y_old_5_final, d_y_old_4_final, d_y_old_3_final, d_y_old_2_final, d_y_old_final, d_y_final), axis=0)
 
         return self.state.copy()
 
@@ -138,9 +146,17 @@ class Environment(object):
             else:
                 self.reward = -1.0
                 self.done = False
+                
+        d_y_old_6_final = self.scale_range_d_y(self.d_y_old_6)
+        d_y_old_5_final = self.scale_range_d_y(self.d_y_old_5)
+        d_y_old_4_final = self.scale_range_d_y(self.d_y_old_4)
+        d_y_old_3_final = self.scale_range_d_y(self.d_y_old_3)
+        d_y_old_2_final = self.scale_range_d_y(self.d_y_old_2)
+        d_y_old_final = self.scale_range_d_y(self.d_y_old)
+        d_y_final = self.scale_range_d_y(self.d_y)
 
         # 상태 업데이트
-        self.state = np.concatenate((self.location, self.goal, self.d_y_old_6, self.d_y_old_5, self.d_y_old_4, self.d_y_old_3, self.d_y_old_2, self.d_y_old, self.d_y), axis=0)
+        self.state = np.concatenate((self.location, self.goal, d_y_old_6_final, d_y_old_5_final, d_y_old_4_final, d_y_old_3_final, d_y_old_2_final, d_y_old_final, d_y_final), axis=0)
 
         return self.state.copy(), self.reward, self.done, 0
 
@@ -376,6 +392,13 @@ class Environment(object):
             next_d_y = self.d_y_min - next_d_y + self.d_y_min            
        
         return next_d_y, next_delta_d_y
+
+    def scale_range_d_y(self, d_y_mm):
+        
+        d_y_nn = d_y_mm - 180 #update from -32.5 -- 392.5 to -3.036 -- 3.036
+        d_y_nn = d_y_nn / 70
+       
+        return d_y_nn        
 
     # 1. forward kinematics를 통해 로봇의 각 obb의 world 좌표계 기준 값을 구함
     def kine_rmx52_1(self, point):
