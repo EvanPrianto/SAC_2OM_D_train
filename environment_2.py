@@ -31,7 +31,7 @@ class Environment(object):
 
         self.c_check_acc = hp.c_check_acc
 
-        self.dim = int((hp.state_dim-7) / 2) #dimension of configuration space = 6D, #number of features = 7
+        self.dim = int((hp.state_dim-5) / 2) #dimension of configuration space = 6D, #number of features = 5
 
         # self.reset()과 self.step()에서 계산할 변수
         # location = 현재 위치
@@ -44,8 +44,8 @@ class Environment(object):
         self.d_y_old_2 = None
         self.d_y_old_3 = None
         self.d_y_old_4 = None
-        self.d_y_old_5 = None
-        self.d_y_old_6 = None
+        #self.d_y_old_5 = None
+        #self.d_y_old_6 = None
         self.delta_d_y = None
         self.location = None
         self.goal = None
@@ -73,9 +73,9 @@ class Environment(object):
         self.d_y_old_2 = self.d_y
         self.d_y_old_3 = self.d_y
         self.d_y_old_4 = self.d_y
-        self.d_y_old_5 = self.d_y
-        self.d_y_old_6 = self.d_y
-        self.delta_d_y = np.sign(np.random.randn()) * np.pi
+        #self.d_y_old_5 = self.d_y
+        #self.d_y_old_6 = self.d_y
+        self.delta_d_y = np.sign(np.random.randn()) * (np.pi-2)
         self.d_obstacle[1]['c'][1] = self.d_y    #Yposition of dynamic obstacle
 
         # 현재 위치를 무작위로 생성
@@ -90,8 +90,8 @@ class Environment(object):
         while self.collision_init_check(self.goal) | self.goal_check(self.location):#sample free
             self.goal = (self.joint_range - 2.0 * self.margin) * np.random.rand(self.dim) + self.joint_min + self.margin#sample goal point
 
-        d_y_old_6_final = self.scale_range_d_y(self.d_y_old_6)
-        d_y_old_5_final = self.scale_range_d_y(self.d_y_old_5)
+        #d_y_old_6_final = self.scale_range_d_y(self.d_y_old_6)
+        #d_y_old_5_final = self.scale_range_d_y(self.d_y_old_5)
         d_y_old_4_final = self.scale_range_d_y(self.d_y_old_4)
         d_y_old_3_final = self.scale_range_d_y(self.d_y_old_3)
         d_y_old_2_final = self.scale_range_d_y(self.d_y_old_2)
@@ -99,7 +99,7 @@ class Environment(object):
         d_y_final = self.scale_range_d_y(self.d_y)
 
         # 상태 정의 == 현재 위치 및 목표 위치
-        self.state = np.concatenate((self.location, self.goal, d_y_old_6_final, d_y_old_5_final, d_y_old_4_final, d_y_old_3_final, d_y_old_2_final, d_y_old_final, d_y_final), axis=0)
+        self.state = np.concatenate((self.location, self.goal, d_y_old_4_final, d_y_old_3_final, d_y_old_2_final, d_y_old_final, d_y_final), axis=0)
 
         return self.state.copy()
 
@@ -127,12 +127,12 @@ class Environment(object):
         # (5) (4)에서 체크에 걸릴경우 보상은 0, 목표 달성 여부는 True, 에피소드 종료
         # (6) (4)에서 체크를 통과할 경우 보상은 -1, 목표 달성 여부는 False
         if self.collision_path_check(self.location, next_location) | self.range_check(next_location):#range_check=check inside max min joint
-            self.reward = -1.0
+            self.reward = -3.0
             self.done = False
         else:
             self.location = next_location
-            self.d_y_old_6 = self.d_y_old_5
-            self.d_y_old_5 = self.d_y_old_4
+            #self.d_y_old_6 = self.d_y_old_5
+            #self.d_y_old_5 = self.d_y_old_4
             self.d_y_old_4 = self.d_y_old_3
             self.d_y_old_3 = self.d_y_old_2
             self.d_y_old_2 = self.d_y_old
@@ -146,9 +146,9 @@ class Environment(object):
             else:
                 self.reward = -1.0
                 self.done = False
-                
-        d_y_old_6_final = self.scale_range_d_y(self.d_y_old_6)
-        d_y_old_5_final = self.scale_range_d_y(self.d_y_old_5)
+
+        #d_y_old_6_final = self.scale_range_d_y(self.d_y_old_6)
+        #d_y_old_5_final = self.scale_range_d_y(self.d_y_old_5)
         d_y_old_4_final = self.scale_range_d_y(self.d_y_old_4)
         d_y_old_3_final = self.scale_range_d_y(self.d_y_old_3)
         d_y_old_2_final = self.scale_range_d_y(self.d_y_old_2)
@@ -156,22 +156,22 @@ class Environment(object):
         d_y_final = self.scale_range_d_y(self.d_y)
 
         # 상태 업데이트
-        self.state = np.concatenate((self.location, self.goal, d_y_old_6_final, d_y_old_5_final, d_y_old_4_final, d_y_old_3_final, d_y_old_2_final, d_y_old_final, d_y_final), axis=0)
+        self.state = np.concatenate((self.location, self.goal, d_y_old_4_final, d_y_old_3_final, d_y_old_2_final, d_y_old_final, d_y_final), axis=0)
 
         return self.state.copy(), self.reward, self.done, 0
 
-    def eval_reset(self, state):
+    # def eval_reset(self, state):
 
-        self.time_step = 0
-        self.success = False
-        self.length = 0
+        # self.time_step = 0
+        # self.success = False
+        # self.length = 0
 
-        self.state = state.copy()
+        # self.state = state.copy()
 
-        self.location = state[:self.dim].copy()
-        self.goal = state[self.dim:].copy()
+        # self.location = state[:self.dim].copy()
+        # self.goal = state[self.dim:].copy()
 
-        return self.state.copy()
+        # return self.state.copy()
 
     def build_obstacle(self):
 
@@ -269,33 +269,33 @@ class Environment(object):
 
         return flag
 
-    def d_collision_init_check(self, check_point):
+    # def d_collision_init_check(self, check_point):
 
-        x = []
+        # x = []
 
-        x.append(check_point + np.array([0.0, 0.0, 0.0, 0.0, 0.0, 0.0]))
-        x.append(check_point + np.array([self.margin, 0.0, 0.0, 0.0, 0.0, 0.0]))
-        x.append(check_point + np.array([-self.margin, 0.0, 0.0, 0.0, 0.0, 0.0]))
-        x.append(check_point + np.array([0.0, self.margin, 0.0, 0.0, 0.0, 0.0]))
-        x.append(check_point + np.array([0.0, -self.margin, 0.0, 0.0, 0.0, 0.0]))
-        x.append(check_point + np.array([0.0, 0.0, self.margin, 0.0, 0.0, 0.0]))
-        x.append(check_point + np.array([0.0, 0.0, -self.margin, 0.0, 0.0, 0.0]))
-        x.append(check_point + np.array([0.0, 0.0, 0.0, self.margin, 0.0, 0.0]))
-        x.append(check_point + np.array([0.0, 0.0, 0.0, -self.margin, 0.0, 0.0]))
-        x.append(check_point + np.array([0.0, 0.0, 0.0, 0.0, self.margin, 0.0]))
-        x.append(check_point + np.array([0.0, 0.0, 0.0, 0.0, -self.margin, 0.0]))
-        x.append(check_point + np.array([0.0, 0.0, 0.0, 0.0, 0.0, self.margin]))
-        x.append(check_point + np.array([0.0, 0.0, 0.0, 0.0, 0.0, -self.margin]))
+        # x.append(check_point + np.array([0.0, 0.0, 0.0, 0.0, 0.0, 0.0]))
+        # x.append(check_point + np.array([self.margin, 0.0, 0.0, 0.0, 0.0, 0.0]))
+        # x.append(check_point + np.array([-self.margin, 0.0, 0.0, 0.0, 0.0, 0.0]))
+        # x.append(check_point + np.array([0.0, self.margin, 0.0, 0.0, 0.0, 0.0]))
+        # x.append(check_point + np.array([0.0, -self.margin, 0.0, 0.0, 0.0, 0.0]))
+        # x.append(check_point + np.array([0.0, 0.0, self.margin, 0.0, 0.0, 0.0]))
+        # x.append(check_point + np.array([0.0, 0.0, -self.margin, 0.0, 0.0, 0.0]))
+        # x.append(check_point + np.array([0.0, 0.0, 0.0, self.margin, 0.0, 0.0]))
+        # x.append(check_point + np.array([0.0, 0.0, 0.0, -self.margin, 0.0, 0.0]))
+        # x.append(check_point + np.array([0.0, 0.0, 0.0, 0.0, self.margin, 0.0]))
+        # x.append(check_point + np.array([0.0, 0.0, 0.0, 0.0, -self.margin, 0.0]))
+        # x.append(check_point + np.array([0.0, 0.0, 0.0, 0.0, 0.0, self.margin]))
+        # x.append(check_point + np.array([0.0, 0.0, 0.0, 0.0, 0.0, -self.margin]))
     
 
-        flag = False
+        # flag = False
 
-        for i in range(13):
-            if self.d_collision_check(x[i]):
-                flag = True
-                break
+        # for i in range(13):
+            # if self.d_collision_check(x[i]):
+                # flag = True
+                # break
 
-        return flag
+        # return flag
 
     # a지점과 b지점을 연결하는 직선 경로에 대해 충돌이 발생하는지를 체크하는 함수
     # 방법은 a지점과 b지점을 연결하는 직선 경로를 n등분하여 각각의 지점에 대해 충돌 여부를 검사
@@ -398,7 +398,7 @@ class Environment(object):
         d_y_nn = d_y_mm - 180 #update from -32.5 -- 392.5 to -3.036 -- 3.036
         d_y_nn = d_y_nn / 70
        
-        return d_y_nn        
+        return d_y_nn
 
     # 1. forward kinematics를 통해 로봇의 각 obb의 world 좌표계 기준 값을 구함
     def kine_rmx52_1(self, point):
