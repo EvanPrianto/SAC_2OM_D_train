@@ -11,12 +11,12 @@ class hp(object):
     joint_wrist_min = -120 * np.pi / 180.0
     joint_max = np.array([140.0, -45.0, 150.0, 140.0, -45.0, 150.0]) * np.pi / 180.0
     joint_min = np.array([-140.0, -180.0, 45.0, -140.0, -180.0, 45.0]) * np.pi / 180.0
-    step_size = 0.05 * (np.prod(joint_max - joint_min)**(1.0/6.0))#Geometric mean c-space
+    step_size = 0.05 * (np.prod(joint_max - joint_min)**(1.0/3.0))#Geometric mean c-space
     goal_bound = 0.2 * step_size
     margin = goal_bound #makes max value lower and min value higher and also increase node check boundary
     env_noise = 0.002 #noise in step fuction
     c_check_acc = 0.2 #accuracy of path collision(step check)
-    state_dim = 19 #delta joint and goal(12 = 6D x 2) with features of obstacle location(number of features = 7)
+    state_dim = 17 #delta joint and goal(12 = 6D x 2) with features of obstacle location(number of features = 5)
     action_dim = 6
 
     # agent
