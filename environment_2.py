@@ -75,7 +75,7 @@ class Environment(object):
         self.d_y_old_4 = self.d_y
         #self.d_y_old_5 = self.d_y
         #self.d_y_old_6 = self.d_y
-        self.delta_d_y = np.sign(np.random.randn()) * (np.pi-2)
+        self.delta_d_y = np.sign(np.random.randn()) * (np.pi) * 30
         self.d_obstacle[1]['c'][1] = self.d_y    #Yposition of dynamic obstacle
 
         # 현재 위치를 무작위로 생성
