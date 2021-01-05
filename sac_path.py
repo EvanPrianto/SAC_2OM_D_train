@@ -62,9 +62,7 @@ def update_target_variables(target_variables,
                   for target_var, source_var
                   in zip(target_variables, source_variables)]
     return tf.group(name="update_all_variables", *update_ops)
-
-
-
+    
 
 class SAC():
     def __init__(self):
@@ -228,7 +226,6 @@ class SAC():
         return td_errors, policy_loss, td_loss_v, td_loss_q1, tf.reduce_min(logp), tf.reduce_max(logp), tf.reduce_mean(
             logp)
 
-
 class DiagonalGaussian():
     def __init__(self, dim):
         self._dim = dim
@@ -320,7 +317,6 @@ class GaussianActor(tf.keras.Model):
 
         return actions, logp_pis, param
 
-
 class CriticV(tf.keras.Model):
     def __init__(self, state_shape, name='vf'):
         super().__init__(name=name)
@@ -367,9 +363,6 @@ class CriticQ(tf.keras.Model):
 
         return tf.squeeze(values, axis=1)
 
-
-
-
 def get_default_rb_dict(size, env):
     return {
         "size": size,
@@ -391,6 +384,7 @@ def get_replay_buffer(policy, env, size=None):
     kwargs = get_default_rb_dict(policy.memory_capacity, env)
 
     return ReplayBuffer(**kwargs)
+
 
 class Trainer:
     def __init__(self, policy, env):
@@ -475,14 +469,14 @@ class Trainer:
                     state = state.copy()
                     next_state = next_state.copy()
 
-                    for k in range(hp.her_k):  # her_k = 4,  divide_idx = (19-5)/2 = 6D
+                    for k in range(hp.her_k):  # her_k = 4,  divide_idx = (17-5)/2 = 6D
 
                         # export random state
                         future_idx = np.random.randint(low=h, high=self._env.time_step)
                         _, _, _, future_next_state, _ = copy.deepcopy(local_memory[future_idx])
 
                         # change the goal as exported state
-                        state[divide_idx:(hp.state_dim-5)] = future_next_state[:divide_idx] # divide_idx = (19-5)/2 = 6D
+                        state[divide_idx:(hp.state_dim-5)] = future_next_state[:divide_idx] # divide_idx = (17-5)/2 = 6D
 
                         # if agent did not moved
                         if (np.linalg.norm(state[:divide_idx] - next_state[:divide_idx]) == 0) & (
@@ -539,9 +533,6 @@ class Trainer:
 
             if total_steps < self._policy.n_warmup:
                 continue
-
-
-
 
 
 if __name__ == '__main__':

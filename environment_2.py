@@ -75,7 +75,7 @@ class Environment(object):
         self.d_y_old_4 = self.d_y
         #self.d_y_old_5 = self.d_y
         #self.d_y_old_6 = self.d_y
-        self.delta_d_y = np.sign(np.random.randn()) * (np.pi) * 30
+        self.delta_d_y = np.sign(np.random.randn()) * (np.pi) * 15
         self.d_obstacle[1]['c'][1] = self.d_y    #Yposition of dynamic obstacle
 
         # 현재 위치를 무작위로 생성
@@ -127,7 +127,7 @@ class Environment(object):
         # (5) (4)에서 체크에 걸릴경우 보상은 0, 목표 달성 여부는 True, 에피소드 종료
         # (6) (4)에서 체크를 통과할 경우 보상은 -1, 목표 달성 여부는 False
         if self.collision_path_check(self.location, next_location) | self.range_check(next_location):#range_check=check inside max min joint
-            self.reward = -3.0
+            self.reward = -1.0
             self.done = False
         else:
             self.location = next_location
@@ -393,12 +393,25 @@ class Environment(object):
        
         return next_d_y, next_delta_d_y
 
-    def scale_range_d_y(self, d_y_mm):
+    def scale_range_d_y(self, d_y_mm): #update from -32.5 -- 392.5 to -3.036 -- 3.036
         
-        d_y_nn = d_y_mm - 180 #update from -32.5 -- 392.5 to -3.036 -- 3.036
-        d_y_nn = d_y_nn / 70
+        d_y_nn = d_y_mm - 180 #update from -32.5 -- 392.5 to -212.5 -- 212.5
+        d_y_nn = self.loc_bound(d_y_nn)#boundary
+        d_y_nn = d_y_nn / 70  #update from -212.5 -- 212.5 to -3.036 -- 3.036  
        
         return d_y_nn
+        
+    def loc_bound(self, d_y_gs):#masking from -212.5 -- 212.5 to -180 -- 180(global_simetris)(local planner boundary)
+        
+        d_y_ls = d_y_gs
+    
+        if d_y_ls < -180:#upper limit
+            d_y_ls = np.zeros(1)
+            
+        if 180 < d_y_ls:#lower limit
+            d_y_ls = np.zeros(1)
+       
+        return d_y_ls #(local_simetris)
 
     # 1. forward kinematics를 통해 로봇의 각 obb의 world 좌표계 기준 값을 구함
     def kine_rmx52_1(self, point):
