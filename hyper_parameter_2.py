@@ -7,6 +7,7 @@ class hp(object):
     d_y_max = 392.5
     d_y_min = -32.5
     d_margin = 0.2 * 0.05 * (d_y_max - d_y_min)#Geometric mean w-space
+    n_feature = 5
     joint_wrist_max = 90 * np.pi / 180.0
     joint_wrist_min = -120 * np.pi / 180.0
     joint_max = np.array([140.0, -45.0, 150.0, 140.0, -45.0, 150.0]) * np.pi / 180.0

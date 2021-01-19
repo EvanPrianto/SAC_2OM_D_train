@@ -23,6 +23,7 @@ class Environment(object):
         self.d_y_min = hp.d_y_min
         self.d_y_range = self.d_y_max - self.d_y_min
         self.d_margin = hp.d_margin
+        self.n_f = hp.n_feature
 
         self.obstacle = self.build_obstacle()
         self.d_obstacle = self.build_d_obstacle()
@@ -40,10 +41,10 @@ class Environment(object):
         # reward = 보상
         # done = 에피소드 종료 여부
         self.d_y = None
-        self.d_y_old = None
-        self.d_y_old_2 = None
-        self.d_y_old_3 = None
-        self.d_y_old_4 = None
+        #self.d_y_old = None
+        #self.d_y_old_2 = None
+        #self.d_y_old_3 = None
+        #self.d_y_old_4 = None
         #self.d_y_old_5 = None
         #self.d_y_old_6 = None
         self.delta_d_y = None
@@ -68,15 +69,17 @@ class Environment(object):
         self.time_step = 0
         self.success = False
         self.length = 0
-        self.d_y = (self.d_y_range - 2.0 * self.d_margin) * np.random.rand(1) + self.d_y_min + self.d_margin
-        self.d_y_old = self.d_y
-        self.d_y_old_2 = self.d_y
-        self.d_y_old_3 = self.d_y
-        self.d_y_old_4 = self.d_y
+        
+        self.d_y = np.random.rand(self.n_f)
+        self.d_y[:] = (self.d_y_range - 2.0 * self.d_margin) * np.random.rand(1) + self.d_y_min + self.d_margin
+        #self.d_y_old = self.d_y
+        #self.d_y_old_2 = self.d_y
+        #self.d_y_old_3 = self.d_y
+        #self.d_y_old_4 = self.d_y
         #self.d_y_old_5 = self.d_y
         #self.d_y_old_6 = self.d_y
         self.delta_d_y = np.sign(np.random.randn()) * (np.pi) * 15
-        self.d_obstacle[1]['c'][1] = self.d_y    #Yposition of dynamic obstacle
+        self.d_obstacle[1]['c'][1] = self.d_y[0]    #Yposition of dynamic obstacle
 
         # 현재 위치를 무작위로 생성
         # 1.한계 범위를 벗어나지 않고, 2.충돌이 일어나지 않는 위치를 뽑을때까지 반복
@@ -92,14 +95,14 @@ class Environment(object):
 
         #d_y_old_6_final = self.scale_range_d_y(self.d_y_old_6)
         #d_y_old_5_final = self.scale_range_d_y(self.d_y_old_5)
-        d_y_old_4_final = self.scale_range_d_y(self.d_y_old_4)
-        d_y_old_3_final = self.scale_range_d_y(self.d_y_old_3)
-        d_y_old_2_final = self.scale_range_d_y(self.d_y_old_2)
-        d_y_old_final = self.scale_range_d_y(self.d_y_old)
+        #d_y_old_4_final = self.scale_range_d_y(self.d_y_old_4)
+        #d_y_old_3_final = self.scale_range_d_y(self.d_y_old_3)
+        #d_y_old_2_final = self.scale_range_d_y(self.d_y_old_2)
+        #d_y_old_final = self.scale_range_d_y(self.d_y_old)
         d_y_final = self.scale_range_d_y(self.d_y)
 
         # 상태 정의 == 현재 위치 및 목표 위치
-        self.state = np.concatenate((self.location, self.goal, d_y_old_4_final, d_y_old_3_final, d_y_old_2_final, d_y_old_final, d_y_final), axis=0)
+        self.state = np.concatenate((self.location, self.goal, d_y_final), axis=0)
 
         return self.state.copy()
 
@@ -116,7 +119,7 @@ class Environment(object):
         # 현재 위치에 대해 취해진 행동으로 다음 위치 계산
         next_location = self.location + self.step_size * action + self.env_noise * np.random.randn(self.dim)
         
-        next_d_y, next_delta_d_y = self.update_dynamic(self.d_y,self.delta_d_y)#dynamic obstacle movement
+        next_d_y, next_delta_d_y = self.update_dynamic(self.d_y[0],self.delta_d_y)#dynamic obstacle movement
         self.d_obstacle[1]['c'][1] = next_d_y
 
         # 다음 위치에 따른 상태, 보상, 목표 달성 여부 등을 계산
@@ -127,17 +130,18 @@ class Environment(object):
         # (5) (4)에서 체크에 걸릴경우 보상은 0, 목표 달성 여부는 True, 에피소드 종료
         # (6) (4)에서 체크를 통과할 경우 보상은 -1, 목표 달성 여부는 False
         if self.collision_path_check(self.location, next_location) | self.range_check(next_location):#range_check=check inside max min joint
-            self.reward = -1.0
+            self.reward = -3.0
             self.done = False
         else:
             self.location = next_location
+            self.d_y[1:] = self.d_y[:self.n_f-1]
             #self.d_y_old_6 = self.d_y_old_5
             #self.d_y_old_5 = self.d_y_old_4
-            self.d_y_old_4 = self.d_y_old_3
-            self.d_y_old_3 = self.d_y_old_2
-            self.d_y_old_2 = self.d_y_old
-            self.d_y_old = self.d_y
-            self.d_y = next_d_y
+            #self.d_y_old_4 = self.d_y_old_3
+            #self.d_y_old_3 = self.d_y_old_2
+            #self.d_y_old_2 = self.d_y_old
+            #self.d_y_old = self.d_y
+            self.d_y[0] = next_d_y
             self.delta_d_y = next_delta_d_y
             if self.goal_check(self.location):#check the state is near goal state(define success)
                 self.reward = 0.0
@@ -149,14 +153,14 @@ class Environment(object):
 
         #d_y_old_6_final = self.scale_range_d_y(self.d_y_old_6)
         #d_y_old_5_final = self.scale_range_d_y(self.d_y_old_5)
-        d_y_old_4_final = self.scale_range_d_y(self.d_y_old_4)
-        d_y_old_3_final = self.scale_range_d_y(self.d_y_old_3)
-        d_y_old_2_final = self.scale_range_d_y(self.d_y_old_2)
-        d_y_old_final = self.scale_range_d_y(self.d_y_old)
+        #d_y_old_4_final = self.scale_range_d_y(self.d_y_old_4)
+        #d_y_old_3_final = self.scale_range_d_y(self.d_y_old_3)
+        #d_y_old_2_final = self.scale_range_d_y(self.d_y_old_2)
+        #d_y_old_final = self.scale_range_d_y(self.d_y_old)
         d_y_final = self.scale_range_d_y(self.d_y)
 
         # 상태 업데이트
-        self.state = np.concatenate((self.location, self.goal, d_y_old_4_final, d_y_old_3_final, d_y_old_2_final, d_y_old_final, d_y_final), axis=0)
+        self.state = np.concatenate((self.location, self.goal, d_y_final), axis=0)
 
         return self.state.copy(), self.reward, self.done, 0
 
@@ -401,16 +405,19 @@ class Environment(object):
        
         return d_y_nn
         
-    def loc_bound(self, d_y_gs):#masking from -212.5 -- 212.5 to -180 -- 180(global_simetris)(local planner boundary)
+    def loc_bound(self, d_y_gs):#masking from (global_simetris) -212.5 -- 212.5 to -180 -- 180(local_simetris)(local planner boundary)
         
         d_y_ls = d_y_gs
-    
-        if d_y_ls < -180:#upper limit
-            d_y_ls = np.zeros(1)
+        n_d_y_ls = len(d_y_ls)
+        
+        for i in range(n_d_y_ls):
+        
+            if d_y_ls[i] < -180:#upper limit
+                d_y_ls[i] = np.zeros(1)
             
-        if 180 < d_y_ls:#lower limit
-            d_y_ls = np.zeros(1)
-       
+            if 180 < d_y_ls[i]:#lower limit
+                d_y_ls[i] = np.zeros(1)
+                
         return d_y_ls #(local_simetris)
 
     # 1. forward kinematics를 통해 로봇의 각 obb의 world 좌표계 기준 값을 구함
